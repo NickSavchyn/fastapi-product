@@ -19,8 +19,8 @@ docs_build
 venv
 docs.zip
 archive.zip
+product_catalog.db
 
 # vim temporary files
 *~
 .*.sw?
-/db/
