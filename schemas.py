@@ -1,7 +1,5 @@
 from datetime import datetime
-
 from pydantic import BaseModel, Field
-
 from db.models import Category
 
 
@@ -12,10 +10,6 @@ class ProductBase(BaseModel):
     created_at: datetime
     quantity: int = Field(..., gt=0)
     category: Category
-
-
-class ProductCreate(ProductBase):
-    pass
 
 
 class ProductUpdate(BaseModel):

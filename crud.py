@@ -1,23 +1,23 @@
 from datetime import datetime
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 import schemas
 from db import models
 
 
-def get_all_products(db: Session):
-    db_products = db.query(models.Product).all()
-    return db_products
+async def get_all_products(db: AsyncSession):
+    db_products = await db.execute(models.Product.select())
+    return db_products.scalars().all()
 
 
-def get_product(id: str, db: Session):
-    db_product = db.query(models.Product).filter(models.Product.id == id).first()
+async def get_product(id: int, db: AsyncSession):
+    db_product = await db.execute(models.Product.select().where(models.Product.id == id))
     if db_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
-    return db_product
+    return db_product.scalar_one()
 
 
-def create_product(product: schemas.ProductCreate, db: Session):
+async def create_product(product: schemas.ProductBase, db: AsyncSession):
     db_product = models.Product(
         name=product.name,
         description=product.description,
@@ -27,26 +27,29 @@ def create_product(product: schemas.ProductCreate, db: Session):
         category=product.category
     )
     db.add(db_product)
-    db.commit()
-    db.refresh(db_product)
+    await db.commit()
+    await db.refresh(db_product)
     return db_product
 
 
-def update_product(id: str, product: schemas.ProductUpdate, db: Session):
-    db_product = db.query(models.Product).filter(models.Product.id == id).first()
-    if db_product is None:
+async def update_product(id: int, product: schemas.ProductUpdate, db: AsyncSession):
+    db_product = await db.execute(models.Product.select().where(models.Product.id == id))
+    if db_product.scalar() is None:
         raise HTTPException(status_code=404, detail="Product not found")
-    for field, value in product.dict(exclude_unset=True).items():
-        setattr(db_product, field, value)
-    db.commit()
-    db.refresh(db_product)
-    return db_product
+
+    product_data = product.dict(exclude_unset=True)
+    for field, value in product_data.items():
+        setattr(db_product.scalar(), field, value)
+
+    await db.commit()
+    await db.refresh(db_product.scalar())
+    return db_product.scalar()
 
 
-def delete_product(id: str, db: Session):
-    db_product = db.query(models.Product).filter(models.Product.id == id).first()
+async def delete_product(id: int, db: AsyncSession):
+    db_product = await db.execute(models.Product.select().where(models.Product.id == id))
     if db_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
-    db.delete(db_product)
-    db.commit()
+    await db.delete(db_product)
+    await db.commit()
     return {"message": "Product deleted successfully"}
